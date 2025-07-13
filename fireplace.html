@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forest Camp</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'VT323', monospace;
+            overflow: hidden;
+            background-color: #2c3e50;
+            color: #ecf0f1;
+        }
+        .fire {
+            width: 100px;
+            height: 120px;
+            position: relative;
+            margin: 0 auto;
+        }
+        .log {
+            width: 100px;
+            height: 20px;
+            background-color: #8B4513;
+            position: absolute;
+            bottom: 0;
+            border-radius: 5px;
+        }
+        .log:nth-child(2) {
+            transform: rotate(60deg);
+        }
+        .log:nth-child(3) {
+            transform: rotate(-60deg);
+        }
+        .flame {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            width: 20px;
+            height: 40px;
+            background-color: #f1c40f;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            transform: translateX(-50%);
+            animation: flicker 1s infinite;
+        }
+        .flame:nth-child(2) {
+            width: 15px;
+            height: 30px;
+            background-color: #e67e22;
+            animation-duration: 1.2s;
+        }
+        .flame:nth-child(3) {
+            width: 10px;
+            height: 20px;
+            background-color: #d35400;
+            animation-duration: 0.8s;
+        }
+        @keyframes flicker {
+            0%, 100% { transform: translateX(-50%) scaleY(1) scaleX(1); }
+            50% { transform: translateX(-50%) scaleY(0.8) scaleX(1.2); }
+        }
+        .modal {
+            background-color: rgba(0,0,0,0.8);
+        }
+        .character-avatar {
+            transition: transform 0.3s ease, filter 0.3s ease;
+        }
+        .character-avatar:hover {
+            transform: translateY(-5px);
+        }
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border: 2px solid transparent;
+            cursor: pointer;
+        }
+        .color-swatch.selected {
+            border-color: #3498db;
+            transform: scale(1.1);
+        }
+        .hair-style-label, .lang-btn, .tab-btn, .admin-btn, .icon-btn {
+            padding: 4px 8px;
+            border: 2px solid #4a5568;
+            cursor: pointer;
+        }
+        .hair-style-label.selected, .lang-btn.selected, .tab-btn.selected {
+             background-color: #3498db;
+             border-color: #3498db;
+        }
+        .tooltip {
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .group:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white flex flex-col items-center justify-center h-screen">
+
+    <!-- Character Creation Modal -->
+    <div id="character-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl flex gap-8">
+            <!-- Customization Options -->
+            <div class="flex-grow">
+                <h2 class="text-2xl mb-4 text-center" data-lang-key="createCharacterTitle">Create Your Character</h2>
+                <input type="text" id="character-name-input" data-lang-placeholder="enterYourName" placeholder="Enter your name" class="bg-gray-700 text-white p-2 rounded w-full mb-4 focus:outline-none">
+                
+                <p class="mb-2" data-lang-key="hairStyle">Hair Style:</p>
+                <div id="hair-style-options" class="flex gap-2 mb-4">
+                    <label class="hair-style-label rounded selected" data-style="short">Short</label>
+                    <label class="hair-style-label rounded" data-style="long">Long</label>
+                    <label class="hair-style-label rounded" data-style="beanie">Beanie</label>
+                </div>
+
+                <p class="mb-2" data-lang-key="hairColor">Hair Color:</p>
+                <div id="hair-color-options" class="flex gap-2 mb-4"></div>
+
+                <p class="mb-2" data-lang-key="skinTone">Skin Tone:</p>
+                <div id="skin-tone-options" class="flex gap-2 mb-4"></div>
+
+                <p class="mb-2" data-lang-key="chooseShirtColor">Shirt Color:</p>
+                <input type="color" id="character-color-input" value="#e74c3c" class="w-full h-10 p-1 bg-gray-700 rounded cursor-pointer mb-4">
+                
+                <button id="save-character-btn" data-lang-key="saveCharacter" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full mt-4">Save Character</button>
+            </div>
+            <!-- Avatar Preview -->
+            <div class="flex-shrink-0 flex flex-col items-center">
+                <h3 class="text-xl mb-2" data-lang-key="preview">Preview</h3>
+                <div id="preview-avatar-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Edit Character Modal -->
+    <div id="edit-character-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg w-full max-w-2xl flex gap-8">
+            <!-- Customization Options -->
+            <div class="flex-grow">
+                <h2 class="text-2xl mb-4 text-center" data-lang-key="editCharacterTitle">Edit Your Character</h2>
+                
+                <!-- Name Change -->
+                <p class="mb-2" data-lang-key="characterName">Character Name:</p>
+                <div class="flex gap-2 items-start">
+                     <input type="text" id="edit-character-name-input" class="bg-gray-700 text-white p-2 rounded w-full focus:outline-none">
+                     <button id="save-name-btn" data-lang-key="saveName" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded flex-shrink-0">Save Name</button>
+                </div>
+                <p id="name-cooldown-timer" class="text-sm text-yellow-400 my-2 h-4"></p>
+
+                <!-- Avatar Change -->
+                <p class="mb-2" data-lang-key="hairStyle">Hair Style:</p>
+                <div id="edit-hair-style-options" class="flex gap-2 mb-4">
+                     <label class="hair-style-label rounded" data-style="short">Short</label>
+                     <label class="hair-style-label rounded" data-style="long">Long</label>
+                     <label class="hair-style-label rounded" data-style="beanie">Beanie</label>
+                </div>
+
+                <p class="mb-2" data-lang-key="hairColor">Hair Color:</p>
+                <div id="edit-hair-color-options" class="flex gap-2 mb-4"></div>
+
+                <p class="mb-2" data-lang-key="skinTone">Skin Tone:</p>
+                <div id="edit-skin-tone-options" class="flex gap-2 mb-4"></div>
+
+                <p class="mb-2" data-lang-key="chooseShirtColor">Shirt Color:</p>
+                <input type="color" id="edit-character-color-input" class="w-full h-10 p-1 bg-gray-700 rounded cursor-pointer mb-4">
+                
+                <button id="save-avatar-btn" data-lang-key="saveAvatar" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded w-full mt-4">Save Avatar</button>
+                <button id="close-edit-modal-btn" data-lang-key="close" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded w-full mt-2">Close</button>
+            </div>
+            <!-- Avatar Preview -->
+            <div class="flex-shrink-0 flex flex-col items-center">
+                <h3 class="text-xl mb-2" data-lang-key="preview">Preview</h3>
+                <div id="edit-preview-avatar-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card Description Modal -->
+    <div id="card-description-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
+            <h2 id="card-modal-title" class="text-2xl mb-4" data-lang-key="cardDescription">Card Description</h2>
+            <div id="card-modal-content" class="text-left mb-4 min-h-[100px]">Loading...</div>
+            <button id="close-card-modal-btn" data-lang-key="close" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded w-full">Close</button>
+        </div>
+    </div>
+
+    <!-- Moderation Modal -->
+    <div id="moderation-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
+            <h2 class="text-2xl mb-4" data-lang-key="moderatePlayer">Moderate Player</h2>
+            <p class="mb-4">Moderating: <strong id="mod-player-name"></strong></p>
+            <div class="flex flex-col gap-2">
+                <button class="mod-action-btn bg-yellow-500 hover:bg-yellow-600" data-action="timeout" data-duration="60" data-lang-key="timeout1m">Timeout (1 min)</button>
+                <button class="mod-action-btn bg-yellow-600 hover:bg-yellow-700" data-action="timeout" data-duration="300" data-lang-key="timeout5m">Timeout (5 min)</button>
+                <button class="mod-action-btn bg-orange-600 hover:bg-orange-700" data-action="timeout" data-duration="900" data-lang-key="timeout15m">Timeout (15 min)</button>
+                <button class="mod-action-btn bg-red-700 hover:bg-red-800" data-action="ban" data-lang-key="banPlayer">Ban Player</button>
+                 <button class="mod-action-btn bg-gray-500 hover:bg-gray-600 mt-4" data-action="cancel" data-lang-key="cancel">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Admin Login Modal -->
+    <div id="admin-login-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-md">
+            <h2 class="text-2xl mb-4" data-lang-key="adminLogin">Admin Login</h2>
+            <input type="password" id="admin-code-input" class="bg-gray-700 text-white p-2 rounded w-full mb-4 focus:outline-none" data-lang-placeholder="enterAdminCode" placeholder="Enter Admin Code">
+            <button id="submit-admin-code-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded w-full" data-lang-key="login">Login</button>
+        </div>
+    </div>
+
+    <!-- Admin Panel Modal -->
+    <div id="admin-panel-modal" class="modal fixed inset-0 z-50 hidden items-center justify-center">
+        <div class="bg-gray-800 p-8 rounded-lg shadow-lg text-center max-w-lg w-full">
+            <h2 class="text-2xl mb-4" data-lang-key="adminPanel">Admin Panel</h2>
+            <div id="banned-players-list" class="text-left mb-4 min-h-[200px] max-h-96 overflow-y-auto"></div>
+            <button id="close-admin-panel-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded w-full" data-lang-key="close">Close</button>
+        </div>
+    </div>
+
+    <div class="w-full max-w-5xl mx-auto p-4 flex flex-col md:flex-row gap-4 h-[90vh]">
+        <!-- Game World -->
+        <div class="w-full md:w-3/5 h-full bg-gray-800 rounded-lg p-4 flex flex-col justify-between items-center relative" style="background-image: url('https://www.transparenttextures.com/patterns/dark-denim-3.png');">
+            <div class="w-full flex justify-between items-start">
+                <h1 class="text-3xl flex-shrink-0" data-lang-key="title">Forest Camp</h1>
+                <div class="flex items-center gap-2">
+                    <button id="open-admin-panel-btn" class="admin-btn rounded hidden" data-lang-key="adminPanel">Admin Panel</button>
+                    <button id="admin-login-btn" class="admin-btn rounded" data-lang-key="adminLogin">Admin Login</button>
+                    <div class="group relative">
+                         <button id="edit-character-btn" class="icon-btn rounded">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                         </button>
+                         <span class="tooltip absolute top-full mt-2 px-2 py-1 bg-gray-900 text-xs rounded" data-lang-key="editCharacter">Edit Character</span>
+                    </div>
+                    <div id="language-switcher" class="flex gap-2">
+                        <button class="lang-btn selected" data-lang="en">EN</button>
+                        <button class="lang-btn" data-lang="pt">PT-BR</button>
+                    </div>
+                </div>
+            </div>
+            <div class="w-full flex-grow flex items-center justify-center gap-4 p-4">
+                <div id="character-display-area" class="flex items-end justify-center gap-4 flex-wrap"></div>
+            </div>
+            <div class="w-full flex justify-center items-end gap-8 flex-shrink-0">
+                 <div class="fire">
+                    <div class="log"></div><div class="log"></div><div class="log"></div>
+                    <div class="flame"></div><div class="flame"></div><div class="flame"></div>
+                </div>
+                <div class="text-center pb-4">
+                    <p><span data-lang-key="welcome">Welcome, </span><span id="characterNameDisplay" class="font-bold"></span>!</p>
+                    <p class="text-xs"><span data-lang-key="yourUserId">Your User ID:</span> <span id="userId"></span></p>
+                </div>
+            </div>
+        </div>
+        <!-- Right Panel -->
+        <div class="w-full md:w-2/5 h-full flex flex-col">
+            <div class="bg-gray-800 rounded-lg p-4 flex flex-col h-full">
+                <!-- Chat Area -->
+                <div class="flex flex-col" style="height: 50%;">
+                    <div id="chat-box" class="flex-grow bg-gray-700 rounded p-2 mb-4 overflow-y-auto"></div>
+                    <div class="flex flex-shrink-0">
+                        <input type="text" id="chat-input" data-lang-placeholder="saySomething" class="flex-grow bg-gray-600 rounded-l p-2 focus:outline-none" placeholder="Say something...">
+                        <button id="send-btn" data-lang-key="send" class="bg-blue-500 hover:bg-blue-600 rounded-r px-4">Send</button>
+                    </div>
+                </div>
+                <!-- Lower Area -->
+                <div class="flex flex-col flex-grow mt-4 min-h-0">
+                    <div class="p-4 bg-gray-700 rounded flex-shrink-0">
+                        <h2 class="text-xl mb-2" data-lang-key="activities">Activities</h2>
+                        <button id="card-action-btn" data-lang-key="searchForCard" class="w-full bg-green-500 hover:bg-green-600 p-2 rounded">Search for a Card</button>
+                        <button id="story-action-btn" data-lang-key="tellStory" class="w-full bg-purple-600 hover:bg-purple-700 p-2 rounded mt-2">✨ Tell a Campfire Story</button>
+                        <button id="appeal-ban-btn" data-lang-key="appealBan" class="w-full bg-blue-700 hover:bg-blue-800 p-2 rounded mt-2 hidden">Appeal Ban</button>
+                    </div>
+                    <div class="mt-4 p-4 bg-gray-700 rounded flex-grow flex flex-col min-h-0">
+                        <h2 class="text-xl mb-2 flex-shrink-0" data-lang-key="yourCardCollection">Your Card Collection</h2>
+                        <div id="card-tabs" class="flex border-b border-gray-600 mb-2 flex-shrink-0">
+                            <button class="tab-btn selected rounded-t -mb-px" data-rarity="Common"></button>
+                            <button class="tab-btn rounded-t -mb-px" data-rarity="Uncommon"></button>
+                            <button class="tab-btn rounded-t -mb-px" data-rarity="Rare"></button>
+                        </div>
+                        <div id="card-collection" class="overflow-y-auto flex-grow"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, doc, setDoc, getDoc, updateDoc, deleteDoc, setLogLevel, serverTimestamp, where, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Your personal Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyBFrpwevWRH4HAdt-oCy4OcVu8cVWTKUVM",
+            authDomain: "fir-d00bd.firebaseapp.com",
+            projectId: "fir-d00bd",
+            storageBucket: "fir-d00bd.firebasestorage.app",
+            messagingSenderId: "352737868226",
+            appId: "1:352737868226:web:43ed707487575de20c7e5b",
+            measurementId: "G-46WQJ88YR0"
+        };
+        
+        const appId = 'my-forest-camp-game';
+        const GEMINI_API_KEY = "AIzaSyDORl-zmy7SBHEFkmN1PlfVLu_vzUBOmY4";
+        const initialAuthToken = null;
+        const ADMIN_SECRET_CODE = "40028922"; // IMPORTANT: Change this to your own secret password
+
+        const userIdSpan = document.getElementById('userId');
+        const chatBox = document.getElementById('chat-box');
+        const chatInput = document.getElementById('chat-input');
+        const sendBtn = document.getElementById('send-btn');
+        const cardActionBtn = document.getElementById('card-action-btn');
+        const storyActionBtn = document.getElementById('story-action-btn');
+        const characterModal = document.getElementById('character-modal');
+        const characterNameInput = document.getElementById('character-name-input');
+        const characterColorInput = document.getElementById('character-color-input');
+        const saveCharacterBtn = document.getElementById('save-character-btn');
+        const characterNameDisplay = document.getElementById('characterNameDisplay');
+        const cardCollectionDiv = document.getElementById('card-collection');
+        const characterDisplayArea = document.getElementById('character-display-area');
+        const cardDescriptionModal = document.getElementById('card-description-modal');
+        const cardModalTitle = document.getElementById('card-modal-title');
+        const cardModalContent = document.getElementById('card-modal-content');
+        const closeCardModalBtn = document.getElementById('close-card-modal-btn');
+        const languageSwitcher = document.getElementById('language-switcher');
+        const cardTabs = document.getElementById('card-tabs');
+        const moderationModal = document.getElementById('moderation-modal');
+        const modPlayerName = document.getElementById('mod-player-name');
+        const adminLoginBtn = document.getElementById('admin-login-btn');
+        const adminLoginModal = document.getElementById('admin-login-modal');
+        const adminCodeInput = document.getElementById('admin-code-input');
+        const submitAdminCodeBtn = document.getElementById('submit-admin-code-btn');
+        const adminPanelModal = document.getElementById('admin-panel-modal');
+        const openAdminPanelBtn = document.getElementById('open-admin-panel-btn');
+        const bannedPlayersList = document.getElementById('banned-players-list');
+        const closeAdminPanelBtn = document.getElementById('close-admin-panel-btn');
+        const appealBanBtn = document.getElementById('appeal-ban-btn');
+        const editCharacterBtn = document.getElementById('edit-character-btn');
+        const editCharacterModal = document.getElementById('edit-character-modal');
+        const closeEditModalBtn = document.getElementById('close-edit-modal-btn');
+        
+        let userCharacters = {};
+        let userCards = {};
+        const SKIN_TONES = ['#f2d5b1', '#c68642', '#8d5524', '#66380f'];
+        const HAIR_COLORS = ['#2c2222', '#6b4f3a', '#a63434', '#e9c67b', '#4d6980', '#b5b5b5'];
+        let isAppInitialized = false;
+        let currentLanguage = 'en';
+        let currentUserData = null;
+        let isAdmin = false;
+        let nameCooldownInterval;
+
+        const translations = {
+            en: {
+                createCharacterTitle: "Create Your Character", enterYourName: "Enter your name", chooseShirtColor: "Choose your shirt color:", hairStyle: "Hair Style:", hairColor: "Hair Color:", skinTone: "Skin Tone:", saveCharacter: "Save Character", preview: "Preview", cardDescription: "Card Description", loading: "Loading...", close: "Close", title: "Forest Camp", welcome: "Welcome, ", yourUserId: "Your User ID:", saySomething: "Say something...", send: "Send", activities: "Activities", searchForCard: "Search for a Card", tellStory: "✨ Tell a Campfire Story", yourCardCollection: "Your Card Collection", describe: "✨ Describe", foundCardAction: "found a {rarity} card!", storyAction: "is telling a story...", storyError: "tried to tell a story, but got lost in thought.", needsApiKeyStory: "tried to tell a story, but needs a Gemini API key.", needsApiKeyCard: "To generate a description, please add your Gemini API key to the HTML file.",
+                rarityCommon: "Common", rarityUncommon: "Uncommon", rarityRare: "Rare", moderatePlayer: "Moderate Player", timeout1m: "Timeout (1 min)", timeout5m: "Timeout (5 min)", timeout15m: "Timeout (15 min)", banPlayer: "Ban Player", cancel: "Cancel", youAreBanned: "You are banned from this camp.", youAreTimedOut: "You are in a timeout. Time remaining: ", adminLogin: "Admin Login", enterAdminCode: "Enter Admin Code", login: "Login", adminGranted: "Admin powers granted.", adminDenied: "Incorrect code.", adminPanel: "Admin Panel", unban: "Unban", appeal: "Appeal!", appealBan: "Appeal Ban", appealSent: "Appeal Sent", appealed: "Appealed",
+                editCharacter: "Edit Character", editCharacterTitle: "Edit Your Character", characterName: "Character Name", saveName: "Save Name", saveAvatar: "Save Avatar", nameChangeCooldown: "You can change your name in: "
+            },
+            pt: {
+                createCharacterTitle: "Crie seu Personagem", enterYourName: "Digite seu nome", chooseShirtColor: "Escolha a cor da sua camisa:", hairStyle: "Estilo de Cabelo:", hairColor: "Cor do Cabelo:", skinTone: "Tom de Pele:", saveCharacter: "Salvar Personagem", preview: "Visualização", cardDescription: "Descrição do Card", loading: "Carregando...", close: "Fechar", title: "Acampamento na Floresta", welcome: "Bem-vindo(a), ", yourUserId: "Seu ID de Usuário:", saySomething: "Diga algo...", send: "Enviar", activities: "Atividades", searchForCard: "Procurar um Card", tellStory: "✨ Contar uma História", yourCardCollection: "Sua Coleção de Cards", describe: "✨ Descrever", foundCardAction: "encontrou um card {rarity}!", storyAction: "está contando uma história...", storyError: "tentou contar uma história, mas se perdeu nos pensamentos.", needsApiKeyStory: "tentou contar uma história, mas precisa de uma chave de API Gemini.", needsApiKeyCard: "Para gerar uma descrição, adicione sua chave de API Gemini ao arquivo HTML.",
+                rarityCommon: "Comum", rarityUncommon: "Incomum", rarityRare: "Raro", moderatePlayer: "Moderar Jogador", timeout1m: "Silenciar (1 min)", timeout5m: "Silenciar (5 min)", timeout15m: "Silenciar (15 min)", banPlayer: "Banir Jogador", cancel: "Cancelar", youAreBanned: "Você foi banido deste acampamento.", youAreTimedOut: "Você está silenciado. Tempo restante: ", adminLogin: "Login de Admin", enterAdminCode: "Digite o Código de Admin", login: "Entrar", adminGranted: "Poderes de admin concedidos.", adminDenied: "Código incorreto.", adminPanel: "Painel do Admin", unban: "Desbanir", appeal: "Apelação!", appealBan: "Apelar do Ban", appealSent: "Apelação Enviada", appealed: "Apelou",
+                editCharacter: "Editar Personagem", editCharacterTitle: "Editar seu Personagem", characterName: "Nome do Personagem", saveName: "Salvar Nome", saveAvatar: "Salvar Avatar", nameChangeCooldown: "Você pode mudar seu nome em: "
+            }
+        };
+        const rarityTranslations = {
+            en: { Common: "Common", Uncommon: "Uncommon", Rare: "Rare" },
+            pt: { Common: "Comum", Uncommon: "Incomum", Rare: "Raro" }
+        };
+
+        function setLanguage(lang) {
+            currentLanguage = lang;
+            document.querySelectorAll('[data-lang-key]').forEach(el => {
+                const key = el.getAttribute('data-lang-key');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+            document.querySelectorAll('[data-lang-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-lang-placeholder');
+                 if (translations[lang][key]) {
+                    el.placeholder = translations[lang][key];
+                }
+            });
+            languageSwitcher.querySelector('.selected').classList.remove('selected');
+            languageSwitcher.querySelector(`[data-lang="${lang}"]`).classList.add('selected');
+            updateCardTabs();
+        }
+
+        async function main() {
+            const app = initializeApp(firebaseConfig);
+            const auth = getAuth(app);
+            const db = getFirestore(app);
+            setLogLevel('debug');
+
+            try {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                const userId = auth.currentUser.uid;
+                userIdSpan.textContent = userId;
+                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+
+                onSnapshot(userDocRef, (docSnap) => {
+                    if (docSnap.exists()) {
+                        currentUserData = docSnap.data();
+                        characterModal.style.display = 'none';
+                        updateLocalCharacterDisplay(currentUserData);
+                        checkUserModerationStatus(db, userId);
+                        if (!isAppInitialized) {
+                            initializeAppFeatures(db, auth);
+                            isAppInitialized = true;
+                        }
+                    } else {
+                        if (!isAppInitialized) {
+                            initCustomizationControls('character-modal');
+                            characterModal.style.display = 'flex';
+                        }
+                    }
+                });
+                
+                listenToAllCharacters(db, auth);
+
+                saveCharacterBtn.addEventListener('click', async () => {
+                    const name = document.getElementById('character-name-input').value.trim();
+                    if (name) {
+                        const userData = { 
+                            name, 
+                            shirtColor: document.getElementById('character-color-input').value,
+                            skinTone: document.querySelector('#character-modal #skin-tone-options .selected').dataset.color,
+                            hairColor: document.querySelector('#character-modal #hair-color-options .selected').dataset.color,
+                            hairStyle: document.querySelector('#character-modal #hair-style-options .selected').dataset.style,
+                        };
+                        await setDoc(userDocRef, userData);
+                    }
+                });
+
+                closeCardModalBtn.addEventListener('click', () => {
+                    cardDescriptionModal.style.display = 'none';
+                });
+
+                languageSwitcher.querySelectorAll('.lang-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        setLanguage(btn.dataset.lang);
+                    });
+                });
+
+                cardTabs.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        cardTabs.querySelector('.selected').classList.remove('selected');
+                        btn.classList.add('selected');
+                        displayCardsByRarity(db, auth.currentUser.uid, btn.dataset.rarity);
+                    });
+                });
+
+                adminLoginBtn.addEventListener('click', () => {
+                    adminLoginModal.style.display = 'flex';
+                });
+
+                submitAdminCodeBtn.addEventListener('click', () => {
+                    if (adminCodeInput.value === ADMIN_SECRET_CODE) {
+                        isAdmin = true;
+                        adminLoginModal.style.display = 'none';
+                        adminCodeInput.value = '';
+                        openAdminPanelBtn.classList.remove('hidden');
+                        adminLoginBtn.classList.add('hidden');
+                        alert(translations[currentLanguage].adminGranted);
+                        renderAllCharacters(db, auth); // Re-render to show mod tools
+                    } else {
+                        alert(translations[currentLanguage].adminDenied);
+                    }
+                });
+                
+                openAdminPanelBtn.addEventListener('click', () => openAdminPanel(db));
+                closeAdminPanelBtn.addEventListener('click', () => adminPanelModal.style.display = 'none');
+
+                editCharacterBtn.addEventListener('click', () => openEditCharacterModal(db, userId));
+                closeEditModalBtn.addEventListener('click', () => editCharacterModal.style.display = 'none');
+
+
+            } catch (error) {
+                console.error("Authentication or initialization failed:", error);
+                chatBox.innerHTML = "Error connecting to the camp. Please refresh.";
+            }
+        }
+
+        function initCustomizationControls(modalId) {
+            const modal = document.getElementById(modalId);
+            const hairStyleContainer = modal.querySelector('[id$="hair-style-options"]');
+            const hairColorContainer = modal.querySelector('[id$="hair-color-options"]');
+            const skinToneContainer = modal.querySelector('[id$="skin-tone-options"]');
+            const colorInput = modal.querySelector('[id$="-color-input"]');
+            const previewContainer = modal.querySelector('[id$="-avatar-container"]');
+
+            const renderPreview = () => {
+                 const character = {
+                    shirtColor: colorInput.value,
+                    skinTone: skinToneContainer.querySelector('.selected').dataset.color,
+                    hairColor: hairColorContainer.querySelector('.selected').dataset.color,
+                    hairStyle: hairStyleContainer.querySelector('.selected').dataset.style,
+                };
+                previewContainer.innerHTML = generateAvatar(character);
+            }
+
+            const createSwatches = (parent, colors, onSelect) => {
+                if (!parent) return;
+                parent.innerHTML = '';
+                colors.forEach((color, index) => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'color-swatch rounded-full';
+                    swatch.style.backgroundColor = color;
+                    swatch.dataset.color = color;
+                    if (index === 0) swatch.classList.add('selected');
+                    swatch.addEventListener('click', () => {
+                        parent.querySelector('.selected').classList.remove('selected');
+                        swatch.classList.add('selected');
+                        onSelect();
+                    });
+                    parent.appendChild(swatch);
+                });
+            };
+
+            createSwatches(hairColorContainer, HAIR_COLORS, renderPreview);
+            createSwatches(skinToneContainer, SKIN_TONES, renderPreview);
+            
+            if (hairStyleContainer && !hairStyleContainer.querySelector('.selected')) {
+                hairStyleContainer.querySelector('label').classList.add('selected');
+            }
+
+            hairStyleContainer.querySelectorAll('label').forEach(label => {
+                label.addEventListener('click', () => {
+                    hairStyleContainer.querySelector('.selected').classList.remove('selected');
+                    label.classList.add('selected');
+                    renderPreview();
+                });
+            });
+
+            colorInput.addEventListener('input', renderPreview);
+            renderPreview();
+        }
+        
+        function openEditCharacterModal(db, userId) {
+            const modal = document.getElementById('edit-character-modal');
+            initCustomizationControls('edit-character-modal'); 
+
+            const nameInput = modal.querySelector('#edit-character-name-input');
+            const saveNameBtn = modal.querySelector('#save-name-btn');
+            const saveAvatarBtn = modal.querySelector('#save-avatar-btn');
+            const cooldownTimer = modal.querySelector('#name-cooldown-timer');
+
+            nameInput.value = currentUserData.name;
+            
+            modal.style.display = 'flex';
+
+            clearInterval(nameCooldownInterval);
+            const updateCooldown = () => {
+                const now = new Date();
+                const cooldownEnd = currentUserData.nameChangeCooldownUntil?.toDate();
+                if (cooldownEnd && cooldownEnd > now) {
+                    saveNameBtn.disabled = true;
+                    const timeLeft = Math.round((cooldownEnd - now) / 1000);
+                    cooldownTimer.textContent = `${translations[currentLanguage].nameChangeCooldown} ${timeLeft}s`;
+                } else {
+                    saveNameBtn.disabled = false;
+                    cooldownTimer.textContent = '';
+                    clearInterval(nameCooldownInterval);
+                }
+            };
+            updateCooldown();
+            nameCooldownInterval = setInterval(updateCooldown, 1000);
+
+            saveNameBtn.onclick = async () => {
+                const newName = nameInput.value.trim();
+                if (newName && newName !== currentUserData.name) {
+                    const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+                    const cooldown = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+                    await updateDoc(userDocRef, { name: newName, nameChangeCooldownUntil: cooldown });
+                    editCharacterModal.style.display = 'none';
+                }
+            };
+
+            saveAvatarBtn.onclick = async () => {
+                 const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+                 const newAvatarData = {
+                    shirtColor: modal.querySelector('#edit-character-color-input').value,
+                    skinTone: modal.querySelector('#edit-skin-tone-options .selected').dataset.color,
+                    hairColor: modal.querySelector('#edit-hair-color-options .selected').dataset.color,
+                    hairStyle: modal.querySelector('#edit-hair-style-options .selected').dataset.style,
+                 };
+                 await updateDoc(userDocRef, newAvatarData);
+                 editCharacterModal.style.display = 'none';
+            };
+        }
+
+
+        function initializeAppFeatures(db, auth) {
+            const userId = auth.currentUser.uid;
+            initChat(db, userId);
+            initCardGame(db, userId);
+            initStoryteller(db, userId);
+            listenToUserCards(db, userId);
+            setLanguage('en'); // Set default language
+        }
+
+        function listenToAllCharacters(db, auth) {
+            const usersRef = collection(db, `artifacts/${appId}/public/data/users`);
+            onSnapshot(query(usersRef), (snapshot) => {
+                userCharacters = {};
+                snapshot.forEach(doc => userCharacters[doc.id] = doc.data());
+                renderAllCharacters(db, auth);
+            });
+        }
+
+        function renderAllCharacters(db, auth) {
+            characterDisplayArea.innerHTML = '';
+            const now = new Date();
+            for (const id in userCharacters) {
+                const character = userCharacters[id];
+
+                if (character.banned) {
+                    continue; // Don't render banned players
+                }
+
+                if (character && character.shirtColor) {
+                    const avatarContainer = document.createElement('div');
+                    avatarContainer.className = 'text-center character-avatar';
+                    
+                    const isTimedOut = character.timeoutUntil && character.timeoutUntil.toDate() > now;
+                    if (isTimedOut) {
+                        avatarContainer.classList.add('filter', 'grayscale');
+                    }
+
+                    avatarContainer.innerHTML = `
+                        ${generateAvatar(character)}
+                        <p class="text-sm" style="color: ${isTimedOut ? '#808080' : character.shirtColor};">${character.name}</p>
+                    `;
+                    if (isAdmin && id !== auth.currentUser.uid) {
+                        avatarContainer.style.cursor = 'pointer';
+                        avatarContainer.addEventListener('click', () => openModerationModal(db, id, character.name));
+                    }
+                    characterDisplayArea.appendChild(avatarContainer);
+                }
+            }
+        }
+        
+        function generateAvatar(character) {
+            const { shirtColor, skinTone, hairColor, hairStyle } = character;
+            let hair = '';
+            
+            if (hairStyle === 'long') {
+                hair = `<rect x="10" y="20" width="80" height="60" fill="${hairColor}" /><rect x="20" y="10" width="60" height="10" fill="${hairColor}" />`;
+            } else if (hairStyle === 'beanie') {
+                hair = `<rect x="10" y="20" width="80" height="20" fill="#666" /><rect x="10" y="10" width="80" height="10" fill="#888" />`;
+            } else {
+                hair = `<rect x="10" y="10" width="80" height="20" fill="${hairColor}" /><rect x="20" y="30" width="10" height="10" fill="${hairColor}" /><rect x="70" y="30" width="10" height="10" fill="${hairColor}" />`;
+            }
+
+            return `<svg width="80" height="80" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges"><g><!-- Shirt --><rect x="10" y="60" width="80" height="30" fill="${shirtColor}" /><!-- Hands --><rect x="0" y="60" width="10" height="20" fill="${skinTone}" /><rect x="90" y="60" width="10" height="20" fill="${skinTone}" /><!-- Head --><rect x="20" y="20" width="60" height="50" fill="${skinTone}" /><!-- Hair -->${hair}<!-- Eyes --><rect x="30" y="40" width="10" height="10" fill="#fff" /><rect x="60" y="40" width="10" height="10" fill="#fff" /></g></svg>`;
+        }
+
+        function updateLocalCharacterDisplay(userData) {
+            document.querySelector('[data-lang-key="welcome"]').textContent = translations[currentLanguage].welcome;
+            characterNameDisplay.textContent = userData.name;
+            characterNameDisplay.style.color = userData.shirtColor;
+        }
+
+        function initChat(db, userId) {
+            const messagesRef = collection(db, `artifacts/${appId}/public/data/messages`);
+            onSnapshot(query(messagesRef), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") displayMessage(change.doc.data());
+                });
+            }, (error) => console.error("Chat listener error:", error));
+
+            const sendMessage = async () => {
+                if (checkUserModerationStatus()) return;
+                const text = chatInput.value.trim();
+                if (text && userId) {
+                    await addDoc(messagesRef, { text, user: userId, createdAt: new Date() });
+                    chatInput.value = '';
+                }
+            };
+            sendBtn.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', (e) => e.key === 'Enter' && sendMessage());
+        }
+        
+        function initCardGame(db, userId) {
+            const gameActionsRef = collection(db, `artifacts/${appId}/public/data/gameActions`);
+            onSnapshot(query(gameActionsRef), (snapshot) => {
+                snapshot.docChanges().forEach((change) => {
+                    if (change.type === "added") displayGameAction(change.doc.data());
+                });
+            }, (error) => console.error("Game action listener error:", error));
+
+            cardActionBtn.addEventListener('click', async () => {
+                if (checkUserModerationStatus()) return;
+                const { cardName, rarity } = getRandomCard();
+                const userCardRef = collection(db, `artifacts/${appId}/public/data/users/${userId}/cards`);
+                await addDoc(userCardRef, { name: cardName, rarity, foundAt: new Date() });
+                
+                const translatedRarity = rarityTranslations[currentLanguage][rarity] || rarity;
+                await addDoc(gameActionsRef, {
+                    action: translations[currentLanguage].foundCardAction.replace('{rarity}', translatedRarity),
+                    user: userId,
+                    createdAt: new Date()
+                });
+            });
+        }
+
+        function initStoryteller(db, userId) {
+            storyActionBtn.addEventListener('click', async () => {
+                if (checkUserModerationStatus()) return;
+                if (!GEMINI_API_KEY) {
+                    const gameActionsRef = collection(db, `artifacts/${appId}/public/data/gameActions`);
+                    await addDoc(gameActionsRef, {
+                         action: translations[currentLanguage].needsApiKeyStory,
+                         user: userId,
+                         createdAt: new Date()
+                    });
+                    return;
+                }
+
+                storyActionBtn.disabled = true;
+                storyActionBtn.textContent = translations[currentLanguage].loading;
+
+                const prompt = translations[currentLanguage].storyPrompt;
+                try {
+                    let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                    const payload = { contents: chatHistory };
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0) {
+                        const storyText = result.candidates[0].content.parts[0].text;
+                        const gameActionsRef = collection(db, `artifacts/${appId}/public/data/gameActions`);
+                        await addDoc(gameActionsRef, {
+                            action: translations[currentLanguage].storyAction,
+                            story: storyText,
+                            user: userId,
+                            createdAt: new Date()
+                        });
+                    } else {
+                        throw new Error("No story generated.");
+                    }
+                } catch (error) {
+                    console.error("Story generation failed:", error);
+                    const gameActionsRef = collection(db, `artifacts/${appId}/public/data/gameActions`);
+                    await addDoc(gameActionsRef, {
+                         action: translations[currentLanguage].storyError,
+                         user: userId,
+                         createdAt: new Date()
+                    });
+                } finally {
+                    storyActionBtn.disabled = false;
+                    storyActionBtn.textContent = translations[currentLanguage].tellStory;
+                }
+            });
+        }
+
+        function listenToUserCards(db, userId) {
+            const userCardRef = collection(db, `artifacts/${appId}/public/data/users/${userId}/cards`);
+            onSnapshot(query(userCardRef), (snapshot) => {
+                userCards = { Common: [], Uncommon: [], Rare: [] };
+                snapshot.forEach(doc => {
+                    const card = { id: doc.id, ...doc.data() };
+                    if (userCards[card.rarity]) {
+                        userCards[card.rarity].push(card);
+                    }
+                });
+                updateCardTabs();
+                const activeTab = cardTabs.querySelector('.selected')?.dataset.rarity || 'Common';
+                displayCardsByRarity(db, userId, activeTab);
+            });
+        }
+        
+        function updateCardTabs() {
+            cardTabs.querySelectorAll('.tab-btn').forEach(btn => {
+                const rarity = btn.dataset.rarity;
+                const count = userCards[rarity]?.length || 0;
+                const langKey = `rarity${rarity}`;
+                btn.textContent = `${translations[currentLanguage][langKey]} (${count})`;
+            });
+        }
+
+        function displayCardsByRarity(db, userId, rarity) {
+            cardCollectionDiv.innerHTML = '';
+            const cardsToDisplay = userCards[rarity] || [];
+            if (cardsToDisplay.length > 0) {
+                cardsToDisplay.forEach(card => {
+                    displayCardInCollection(db, userId, card.id, card);
+                });
+            } else {
+                cardCollectionDiv.innerHTML = `<p class="text-gray-500 p-4 text-center">No ${rarity} cards yet.</p>`;
+            }
+        }
+
+        async function showOrGenerateCardDescription(db, userId, cardId, cardData) {
+            cardModalTitle.textContent = `${rarityTranslations[currentLanguage][cardData.rarity] || cardData.rarity} ${cardData.name}`;
+            cardDescriptionModal.style.display = 'flex';
+
+            if (cardData.description && cardData.description[currentLanguage]) {
+                cardModalContent.textContent = cardData.description[currentLanguage];
+                return;
+            }
+
+            if (!GEMINI_API_KEY) {
+                cardModalContent.textContent = translations[currentLanguage].needsApiKeyCard;
+                return;
+            }
+
+            cardModalContent.textContent = translations[currentLanguage].loading;
+
+            const prompt = translations[currentLanguage].cardPrompt
+                .replace('{name}', cardData.name)
+                .replace('{rarity}', cardData.rarity);
+            
+            try {
+                let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+                const payload = { contents: chatHistory };
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const result = await response.json();
+                if (result.candidates && result.candidates.length > 0) {
+                    const text = result.candidates[0].content.parts[0].text;
+                    cardModalContent.textContent = text;
+                    const cardDocRef = doc(db, `artifacts/${appId}/public/data/users/${userId}/cards`, cardId);
+                    const newDescription = { ...cardData.description, [currentLanguage]: text };
+                    await updateDoc(cardDocRef, { description: newDescription });
+                } else {
+                    throw new Error("Invalid response from API");
+                }
+            } catch (error) {
+                console.error("Gemini API error:", error);
+                cardModalContent.textContent = translations[currentLanguage].storyError;
+            }
+        }
+
+        function getRandomCard() {
+            const rand = Math.random();
+            let rarity, name;
+            const commonNames = ["River Stone", "Pinecone", "Sturdy Twig", "Crow Feather", "Smooth Pebble"];
+            const uncommonNames = ["Glimmering Beetle", "Moonpetal Flower", "Whispering Willow", "Foxglove Bell", "Sun-warmed Moss"];
+            const rareNames = ["Forest Spirit", "Ancient Acorn", "Meteorite Shard", "Crystal Dewdrop", "Fossilized Leaf"];
+
+            if (rand < 0.6) {
+                rarity = "Common";
+                name = commonNames[Math.floor(Math.random() * commonNames.length)];
+            } else if (rand < 0.9) {
+                rarity = "Uncommon";
+                name = uncommonNames[Math.floor(Math.random() * uncommonNames.length)];
+            } else {
+                rarity = "Rare";
+                name = rareNames[Math.floor(Math.random() * rareNames.length)];
+            }
+            
+            return { cardName: name, rarity };
+        }
+
+        function displayMessage(msg) {
+            const character = userCharacters[msg.user] || { name: 'A Wanderer', shirtColor: '#ffffff' };
+            const messageElement = document.createElement('div');
+            messageElement.innerHTML = `<strong style="color: ${character.shirtColor};">${character.name}</strong>: ${msg.text}`;
+            chatBox.appendChild(messageElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function displayGameAction(action) {
+            const character = userCharacters[action.user] || { name: 'A Wanderer', shirtColor: '#ffffff' };
+            const actionElement = document.createElement('div');
+            actionElement.classList.add('text-yellow-300', 'italic', 'p-2', 'my-1', 'border-l-4', 'border-yellow-500');
+            
+            let content = `* <strong style="color: ${character.shirtColor};">${character.name}</strong> ${action.action} *`;
+            if (action.story) {
+                content += `<div class="mt-2 text-white normal-case max-h-48 overflow-y-auto pr-2">${action.story.replace(/\n/g, '<br>')}</div>`;
+            }
+            actionElement.innerHTML = content;
+            chatBox.appendChild(actionElement);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function displayCardInCollection(db, userId, cardId, cardData) {
+            const cardElement = document.createElement('div');
+            cardElement.className = 'flex justify-between items-center mb-1';
+            
+            const cardText = document.createElement('span');
+            const translatedRarity = rarityTranslations[currentLanguage][cardData.rarity] || cardData.rarity;
+            cardText.textContent = `${cardData.name} - ${translatedRarity}`;
+            if (cardData.rarity === "Uncommon") cardText.style.color = "#3498db";
+            if (cardData.rarity === "Rare") cardText.style.color = "#9b59b6";
+
+            const describeBtn = document.createElement('button');
+            describeBtn.innerHTML = `✨ ${translations[currentLanguage].describe}`;
+            describeBtn.className = 'text-xs bg-purple-500 hover:bg-purple-600 px-2 py-1 rounded';
+            describeBtn.onclick = () => showOrGenerateCardDescription(db, userId, cardId, cardData);
+
+            cardElement.appendChild(cardText);
+            cardElement.appendChild(describeBtn);
+            cardCollectionDiv.appendChild(cardElement);
+        }
+
+        function openModerationModal(db, targetId, targetName) {
+            modPlayerName.textContent = targetName;
+            moderationModal.style.display = 'flex';
+            
+            moderationModal.querySelectorAll('.mod-action-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const action = btn.dataset.action;
+                    const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, targetId);
+
+                    if (action === 'timeout') {
+                        const durationSeconds = parseInt(btn.dataset.duration, 10);
+                        const timeoutUntil = new Date(Date.now() + durationSeconds * 1000);
+                        await updateDoc(userDocRef, { timeoutUntil });
+                    } else if (action === 'ban') {
+                        await updateDoc(userDocRef, { banned: true });
+                    }
+                    moderationModal.style.display = 'none';
+                };
+            });
+        }
+
+        function checkUserModerationStatus(db, userId) {
+            if (!currentUserData) return false;
+
+            const now = new Date();
+            let isPunished = false;
+
+            if (currentUserData.banned) {
+                chatInput.disabled = true;
+                sendBtn.disabled = true;
+                cardActionBtn.disabled = true;
+                storyActionBtn.disabled = true;
+                chatInput.placeholder = translations[currentLanguage].youAreBanned;
+                if (!currentUserData.appealed) {
+                    appealBanBtn.classList.remove('hidden');
+                    appealBanBtn.onclick = () => handleAppeal(db, userId);
+                } else {
+                    appealBanBtn.classList.add('hidden');
+                }
+                isPunished = true;
+            } else if (currentUserData.timeoutUntil && currentUserData.timeoutUntil.toDate() > now) {
+                chatInput.disabled = true;
+                sendBtn.disabled = true;
+                cardActionBtn.disabled = true;
+                storyActionBtn.disabled = true;
+                const timeLeft = Math.round((currentUserData.timeoutUntil.toDate() - now) / 1000);
+                chatInput.placeholder = `${translations[currentLanguage].youAreTimedOut} ${timeLeft}s`;
+                isPunished = true;
+            } else {
+                chatInput.disabled = false;
+                sendBtn.disabled = false;
+                cardActionBtn.disabled = false;
+                storyActionBtn.disabled = false;
+                appealBanBtn.classList.add('hidden');
+                chatInput.placeholder = translations[currentLanguage].saySomething;
+            }
+            return isPunished;
+        }
+
+        async function handleAppeal(db, userId) {
+            const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+            await updateDoc(userDocRef, { appealed: true });
+            appealBanBtn.disabled = true;
+            appealBanBtn.textContent = translations[currentLanguage].appealSent;
+        }
+
+        async function openAdminPanel(db) {
+            adminPanelModal.style.display = 'flex';
+            bannedPlayersList.innerHTML = `<p>${translations[currentLanguage].loading}</p>`;
+            
+            const usersRef = collection(db, `artifacts/${appId}/public/data/users`);
+            const q = query(usersRef, where("banned", "==", true));
+            const querySnapshot = await getDocs(q);
+            
+            bannedPlayersList.innerHTML = '';
+            if (querySnapshot.empty) {
+                bannedPlayersList.innerHTML = `<p>No banned players.</p>`;
+                return;
+            }
+
+            querySnapshot.forEach(userDoc => {
+                const userData = userDoc.data();
+                const playerDiv = document.createElement('div');
+                playerDiv.className = 'flex justify-between items-center p-2 border-b border-gray-700';
+                
+                let appealText = '';
+                if (userData.appealed) {
+                    appealText = `<span class="text-green-400 ml-2">(${translations[currentLanguage].appealed})</span>`;
+                }
+
+                playerDiv.innerHTML = `
+                    <span>${userData.name} ${appealText}</span>
+                    <button class="unban-btn bg-green-600 hover:bg-green-700 px-2 py-1 rounded" data-id="${userDoc.id}">${translations[currentLanguage].unban}</button>
+                `;
+                bannedPlayersList.appendChild(playerDiv);
+            });
+
+            bannedPlayersList.querySelectorAll('.unban-btn').forEach(btn => {
+                btn.onclick = async () => {
+                    const targetId = btn.dataset.id;
+                    const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, targetId);
+                    await updateDoc(userDocRef, { banned: false, appealed: false });
+                    openAdminPanel(db); // Refresh the list
+                };
+            });
+        }
+
+        // Periodically check timeout status
+        setInterval(checkUserModerationStatus, 1000);
+
+        main();
+    </script>
+</body>
+</html>
