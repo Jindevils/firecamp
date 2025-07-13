@@ -193,6 +193,8 @@
             <h2 class="text-2xl mb-4" data-lang-key="moderatePlayer">Moderate Player</h2>
             <p class="mb-4">Moderating: <strong id="mod-player-name"></strong></p>
             <div class="flex flex-col gap-2">
+                <input type="text" id="mod-reason-input" class="bg-gray-700 text-white p-2 rounded w-full mb-2" data-lang-placeholder="reasonOptional" placeholder="Reason (optional)">
+                <button class="mod-action-btn bg-blue-500 hover:bg-blue-600" data-action="kick" data-lang-key="kickPlayer">Kick Player</button>
                 <button class="mod-action-btn bg-yellow-500 hover:bg-yellow-600" data-action="timeout" data-duration="60" data-lang-key="timeout1m">Timeout (1 min)</button>
                 <button class="mod-action-btn bg-yellow-600 hover:bg-yellow-700" data-action="timeout" data-duration="300" data-lang-key="timeout5m">Timeout (5 min)</button>
                 <button class="mod-action-btn bg-orange-600 hover:bg-orange-700" data-action="timeout" data-duration="900" data-lang-key="timeout15m">Timeout (15 min)</button>
@@ -356,12 +358,12 @@
             en: {
                 createCharacterTitle: "Create Your Character", enterYourName: "Enter your name", chooseShirtColor: "Choose your shirt color:", hairStyle: "Hair Style:", hairColor: "Hair Color:", skinTone: "Skin Tone:", saveCharacter: "Save Character", preview: "Preview", cardDescription: "Card Description", loading: "Loading...", close: "Close", title: "Forest Camp", welcome: "Welcome, ", yourUserId: "Your User ID:", saySomething: "Say something...", send: "Send", activities: "Activities", searchForCard: "Search for a Card", tellStory: "✨ Tell a Campfire Story", yourCardCollection: "Your Card Collection", describe: "✨ Describe", foundCardAction: "found a {rarity} card!", storyAction: "is telling a story...", storyError: "tried to tell a story, but got lost in thought.", needsApiKeyStory: "tried to tell a story, but needs a Gemini API key.", needsApiKeyCard: "To generate a description, please add your Gemini API key to the HTML file.",
                 rarityCommon: "Common", rarityUncommon: "Uncommon", rarityRare: "Rare", moderatePlayer: "Moderate Player", timeout1m: "Timeout (1 min)", timeout5m: "Timeout (5 min)", timeout15m: "Timeout (15 min)", banPlayer: "Ban Player", cancel: "Cancel", youAreBanned: "You are banned from this camp.", youAreTimedOut: "You are in a timeout. Time remaining: ", adminLogin: "Admin Login", enterAdminCode: "Enter Admin Code", login: "Login", adminGranted: "Admin powers granted.", adminDenied: "Incorrect code.", adminPanel: "Admin Panel", unban: "Unban", appeal: "Appeal!", appealBan: "Appeal Ban", appealSent: "Appeal Sent", appealed: "Appealed",
-                editCharacter: "Edit Character", editCharacterTitle: "Edit Your Character", characterName: "Character Name", saveName: "Save Name", saveAvatar: "Save Avatar", nameChangeCooldown: "You can change your name in: "
+                editCharacter: "Edit Character", editCharacterTitle: "Edit Your Character", characterName: "Character Name", saveName: "Save Name", saveAvatar: "Save Avatar", nameChangeCooldown: "You can change your name in: ", kickPlayer: "Kick Player", reasonOptional: "Reason (optional)", youHaveBeenKicked: "You have been kicked.", youHaveBeenKickedFor: "You have been kicked for the following reason: ", youAreBannedFor: "You are banned. Reason: ", youAreTimedOutFor: "You are in a timeout. Reason: "
             },
             pt: {
                 createCharacterTitle: "Crie seu Personagem", enterYourName: "Digite seu nome", chooseShirtColor: "Escolha a cor da sua camisa:", hairStyle: "Estilo de Cabelo:", hairColor: "Cor do Cabelo:", skinTone: "Tom de Pele:", saveCharacter: "Salvar Personagem", preview: "Visualização", cardDescription: "Descrição do Card", loading: "Carregando...", close: "Fechar", title: "Acampamento na Floresta", welcome: "Bem-vindo(a), ", yourUserId: "Seu ID de Usuário:", saySomething: "Diga algo...", send: "Enviar", activities: "Atividades", searchForCard: "Procurar um Card", tellStory: "✨ Contar uma História", yourCardCollection: "Sua Coleção de Cards", describe: "✨ Descrever", foundCardAction: "encontrou um card {rarity}!", storyAction: "está contando uma história...", storyError: "tentou contar uma história, mas se perdeu nos pensamentos.", needsApiKeyStory: "tentou contar uma história, mas precisa de uma chave de API Gemini.", needsApiKeyCard: "Para gerar uma descrição, adicione sua chave de API Gemini ao arquivo HTML.",
                 rarityCommon: "Comum", rarityUncommon: "Incomum", rarityRare: "Raro", moderatePlayer: "Moderar Jogador", timeout1m: "Silenciar (1 min)", timeout5m: "Silenciar (5 min)", timeout15m: "Silenciar (15 min)", banPlayer: "Banir Jogador", cancel: "Cancelar", youAreBanned: "Você foi banido deste acampamento.", youAreTimedOut: "Você está silenciado. Tempo restante: ", adminLogin: "Login de Admin", enterAdminCode: "Digite o Código de Admin", login: "Entrar", adminGranted: "Poderes de admin concedidos.", adminDenied: "Código incorreto.", adminPanel: "Painel do Admin", unban: "Desbanir", appeal: "Apelação!", appealBan: "Apelar do Ban", appealSent: "Apelação Enviada", appealed: "Apelou",
-                editCharacter: "Editar Personagem", editCharacterTitle: "Editar seu Personagem", characterName: "Nome do Personagem", saveName: "Salvar Nome", saveAvatar: "Salvar Avatar", nameChangeCooldown: "Você pode mudar seu nome em: "
+                editCharacter: "Editar Personagem", editCharacterTitle: "Editar seu Personagem", characterName: "Nome do Personagem", saveName: "Salvar Nome", saveAvatar: "Salvar Avatar", nameChangeCooldown: "Você pode mudar seu nome em: ", kickPlayer: "Expulsar Jogador", reasonOptional: "Motivo (opcional)", youHaveBeenKicked: "Você foi expulso.", youHaveBeenKickedFor: "Você foi expulso pelo seguinte motivo: ", youAreBannedFor: "Você foi banido. Motivo: ", youAreTimedOutFor: "Você está silenciado. Motivo: "
             }
         };
         const rarityTranslations = {
@@ -506,15 +508,19 @@
                 previewContainer.innerHTML = generateAvatar(character);
             }
 
-            const createSwatches = (parent, colors, onSelect) => {
+            const createSwatches = (parent, colors, onSelect, currentVal) => {
                 if (!parent) return;
                 parent.innerHTML = '';
-                colors.forEach((color, index) => {
+                let selectedFound = false;
+                colors.forEach((color) => {
                     const swatch = document.createElement('div');
                     swatch.className = 'color-swatch rounded-full';
                     swatch.style.backgroundColor = color;
                     swatch.dataset.color = color;
-                    if (index === 0) swatch.classList.add('selected');
+                    if (color === currentVal) {
+                        swatch.classList.add('selected');
+                        selectedFound = true;
+                    }
                     swatch.addEventListener('click', () => {
                         parent.querySelector('.selected').classList.remove('selected');
                         swatch.classList.add('selected');
@@ -522,16 +528,21 @@
                     });
                     parent.appendChild(swatch);
                 });
+                if (!selectedFound && parent.firstChild) {
+                    parent.firstChild.classList.add('selected');
+                }
             };
 
-            createSwatches(hairColorContainer, HAIR_COLORS, renderPreview);
-            createSwatches(skinToneContainer, SKIN_TONES, renderPreview);
-            
-            if (hairStyleContainer && !hairStyleContainer.querySelector('.selected')) {
-                hairStyleContainer.querySelector('label').classList.add('selected');
-            }
+            const hairStyle = currentUserData?.hairStyle || 'short';
+            const hairColor = currentUserData?.hairColor || HAIR_COLORS[0];
+            const skinTone = currentUserData?.skinTone || SKIN_TONES[0];
+            const shirtColor = currentUserData?.shirtColor || '#e74c3c';
 
+            createSwatches(hairColorContainer, HAIR_COLORS, renderPreview, hairColor);
+            createSwatches(skinToneContainer, SKIN_TONES, renderPreview, skinTone);
+            
             hairStyleContainer.querySelectorAll('label').forEach(label => {
+                label.classList.toggle('selected', label.dataset.style === hairStyle);
                 label.addEventListener('click', () => {
                     hairStyleContainer.querySelector('.selected').classList.remove('selected');
                     label.classList.add('selected');
@@ -539,14 +550,14 @@
                 });
             });
 
+            colorInput.value = shirtColor;
             colorInput.addEventListener('input', renderPreview);
             renderPreview();
         }
         
         function openEditCharacterModal(db, userId) {
-            const modal = document.getElementById('edit-character-modal');
             initCustomizationControls('edit-character-modal'); 
-
+            const modal = document.getElementById('edit-character-modal');
             const nameInput = modal.querySelector('#edit-character-name-input');
             const saveNameBtn = modal.querySelector('#save-name-btn');
             const saveAvatarBtn = modal.querySelector('#save-avatar-btn');
@@ -677,7 +688,7 @@
             }, (error) => console.error("Chat listener error:", error));
 
             const sendMessage = async () => {
-                if (checkUserModerationStatus()) return;
+                if (checkUserModerationStatus(db, userId)) return;
                 const text = chatInput.value.trim();
                 if (text && userId) {
                     await addDoc(messagesRef, { text, user: userId, createdAt: new Date() });
@@ -697,7 +708,7 @@
             }, (error) => console.error("Game action listener error:", error));
 
             cardActionBtn.addEventListener('click', async () => {
-                if (checkUserModerationStatus()) return;
+                if (checkUserModerationStatus(db, userId)) return;
                 const { cardName, rarity } = getRandomCard();
                 const userCardRef = collection(db, `artifacts/${appId}/public/data/users/${userId}/cards`);
                 await addDoc(userCardRef, { name: cardName, rarity, foundAt: new Date() });
@@ -713,7 +724,7 @@
 
         function initStoryteller(db, userId) {
             storyActionBtn.addEventListener('click', async () => {
-                if (checkUserModerationStatus()) return;
+                if (checkUserModerationStatus(db, userId)) return;
                 if (!GEMINI_API_KEY) {
                     const gameActionsRef = collection(db, `artifacts/${appId}/public/data/gameActions`);
                     await addDoc(gameActionsRef, {
@@ -913,36 +924,51 @@
         function openModerationModal(db, targetId, targetName) {
             modPlayerName.textContent = targetName;
             moderationModal.style.display = 'flex';
+            const reasonInput = document.getElementById('mod-reason-input');
+            reasonInput.value = '';
             
             moderationModal.querySelectorAll('.mod-action-btn').forEach(btn => {
                 btn.onclick = async () => {
                     const action = btn.dataset.action;
                     const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, targetId);
+                    const reason = reasonInput.value.trim();
 
-                    if (action === 'timeout') {
+                    if (action === 'kick') {
+                        await updateDoc(userDocRef, { kicked: true, moderationReason: reason });
+                    } else if (action === 'timeout') {
                         const durationSeconds = parseInt(btn.dataset.duration, 10);
                         const timeoutUntil = new Date(Date.now() + durationSeconds * 1000);
-                        await updateDoc(userDocRef, { timeoutUntil });
+                        await updateDoc(userDocRef, { timeoutUntil, moderationReason: reason });
                     } else if (action === 'ban') {
-                        await updateDoc(userDocRef, { banned: true });
+                        await updateDoc(userDocRef, { banned: true, moderationReason: reason });
                     }
                     moderationModal.style.display = 'none';
                 };
             });
         }
 
-        function checkUserModerationStatus(db, userId) {
+        async function checkUserModerationStatus(db, userId) {
             if (!currentUserData) return false;
 
             const now = new Date();
             let isPunished = false;
+
+            if (currentUserData.kicked) {
+                const reason = currentUserData.moderationReason;
+                alert(reason ? `${translations[currentLanguage].youHaveBeenKickedFor} ${reason}` : translations[currentLanguage].youHaveBeenKicked);
+                const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, userId);
+                await deleteDoc(userDocRef);
+                window.location.reload();
+                return true;
+            }
 
             if (currentUserData.banned) {
                 chatInput.disabled = true;
                 sendBtn.disabled = true;
                 cardActionBtn.disabled = true;
                 storyActionBtn.disabled = true;
-                chatInput.placeholder = translations[currentLanguage].youAreBanned;
+                const reason = currentUserData.moderationReason;
+                chatInput.placeholder = reason ? `${translations[currentLanguage].youAreBannedFor} ${reason}` : translations[currentLanguage].youAreBanned;
                 if (!currentUserData.appealed) {
                     appealBanBtn.classList.remove('hidden');
                     appealBanBtn.onclick = () => handleAppeal(db, userId);
@@ -956,7 +982,9 @@
                 cardActionBtn.disabled = true;
                 storyActionBtn.disabled = true;
                 const timeLeft = Math.round((currentUserData.timeoutUntil.toDate() - now) / 1000);
-                chatInput.placeholder = `${translations[currentLanguage].youAreTimedOut} ${timeLeft}s`;
+                const reason = currentUserData.moderationReason;
+                const reasonText = reason ? ` (${translations[currentLanguage].youAreTimedOutFor} ${reason})` : '';
+                chatInput.placeholder = `${translations[currentLanguage].youAreTimedOut} ${timeLeft}s${reasonText}`;
                 isPunished = true;
             } else {
                 chatInput.disabled = false;
@@ -1011,7 +1039,7 @@
                 btn.onclick = async () => {
                     const targetId = btn.dataset.id;
                     const userDocRef = doc(db, `artifacts/${appId}/public/data/users`, targetId);
-                    await updateDoc(userDocRef, { banned: false, appealed: false });
+                    await updateDoc(userDocRef, { banned: false, appealed: false, moderationReason: null });
                     openAdminPanel(db); // Refresh the list
                 };
             });
